@@ -1,0 +1,81 @@
+// -*- javascript -*-
+
+// This script changes the namespace of resource that have been given
+// one. To use:
+//
+//     jk transform ./bin/renamespace.jk --stdout path/to/*.yaml
+//
+// to eyeball the result; then either pick a destination and use `-o`
+// to write there, or if you are brave, use `--overwrite` to let jk
+// overwrite the files in place.
+
+import { merge, deepWithKey } from '@jkcfg/std/merge';
+import * as param from '@jkcfg/std/param';
+
+const newNamespace = param.String('namespace', 'platform');
+
+// mergeMap assumes the left-hand value is an array, and merges each
+// item with the right-hand value (using the given rules) to get
+// another array.
+function mergeMap(rules) {
+  return (v1, v2) => v1.map(v => merge(v, v2, rules));
+}
+
+export default function renamespace(v) {
+  switch (v.kind) {
+  // The namespace declaration itself
+  case 'Namespace':
+    return merge(v, { metadata: { name: newNamespace } });
+
+  // A cluster role binding subject will have a namespace, but aren't
+  // namespaced themselves.
+  case 'ClusterRoleBinding':
+    return merge(v, {
+      subjects: { namespace: newNamespace },
+    }, { subjects: mergeMap() });
+
+  // Webhooks have a namespaced clientConfig, but aren't namespaced
+  // themselves.
+  case 'ValidatingWebhookConfiguration':
+  case 'MutatingWebhookConfiguration':
+    return merge(v, {
+      webhooks: {
+        clientConfig: {
+          service: { namespace: newNamespace },
+        },
+      },
+    }, { webhooks : mergeMap() });
+
+  // These things don't have a namespace
+  // acquired with:
+  //
+  //     kubectl api-resources --namespaced=false --no-headers
+  case 'ComponentStatus':
+  case 'Namespace':
+  case 'Node':
+  case 'PersistentVolume':
+  case 'MutatingWebhookConfiguration':
+  case 'ValidatingWebhookConfiguration':
+  case 'CustomResourceDefinition':
+  case 'APIService':
+  case 'TokenReview':
+  case 'SelfSubjectAccessReview':
+  case 'SelfSubjectRulesReview':
+  case 'SubjectAccessReview':
+  case 'CertificateSigningRequest':
+  case 'PodSecurityPolicy':
+  case 'RuntimeClass':
+  case 'ClusterRoleBinding':
+  case 'ClusterRole':
+  case 'PriorityClass':
+  case 'CSIDriver':
+  case 'CSINode':
+  case 'StorageClass':
+  case 'VolumeAttachment':
+    return v;
+
+  default:
+  // Anything else: give it the new namespace.
+    return merge(v, { metadata: { namespace: newNamespace } });
+  }
+}
