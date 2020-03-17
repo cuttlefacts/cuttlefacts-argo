@@ -138,6 +138,7 @@ spec:
         - --git-url=https://github.com/squaremo/cuttlefacts-argo
         - --git-branch=master
         - --git-path=bootstrap
+        - --git-path=platform
 
         # Include these two to enable git commit signing
         # - --git-gpg-key-import=/root/gpg-import
