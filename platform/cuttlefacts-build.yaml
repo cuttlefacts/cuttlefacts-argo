@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: cuttlefacts-build-
+  namespace: platform
+spec:
+  entrypoint: build-and-push
+  imagePullSecrets:
+  - name: cuttlefacts-push-secret
+  templates:
+  - name: build-and-push
+    inputs:
+      artifacts:
+      - name: source
+        path: /workspace/source
+        git:
+          repo: https://github.com/squaremo/cuttlefacts-app
+          revision: master
+    volumes:
+    - name: image-push-secret
+      secret:
+        secretName: cuttlefacts-push-secret
+    container:
+      image: gcr.io/kaniko-project/executor:v0.13.0
+      volumeMounts:
+      - name: image-push-secret
+        mountPath: /secrets/.docker
+        readOnly: true
+      env:
+      - name: DOCKER_CONFIG
+        value: /secrets/.docker
+      command:
+      - /kaniko/executor
+      - --dockerfile=/workspace/source/src/Dockerfile
+      - --context=/workspace/source/src/
+      - --destination=docker.pkg.github.com/squaremo/cuttlefacts-argo/cuttlefacts-app
