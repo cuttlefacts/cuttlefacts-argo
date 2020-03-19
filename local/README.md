@@ -32,3 +32,15 @@ This makes a secret with an entry `.dockerconfigjson`, but I need
 `config.json` so that it can be used when mounted into a
 container. Either edit it so the data entry has the key `config.json`,
 or use `./bin/dockerconfigjson.jk`, and apply.
+
+## Setting up a shared webhook secret
+
+GitHub signs webhook requests with a shared secret so the receiver can
+verify the payload. To create a shared secret:
+
+```
+KEY=$(ruby -rsecurerandom -e 'print SecureRandom.hex(20)')
+# the name 'cuttlefacts-webhook-secret' matches the webhookSecret
+# in platform/cuttlefacts-events.yaml
+kubectl -n platform create secret generic cuttlefacts-webhook-secret --from-literal=key=$KEY
+```
