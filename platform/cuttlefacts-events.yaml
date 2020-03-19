@@ -136,9 +136,12 @@ spec:
               kind: Workflow
               metadata:
                 generateName: cuttlefacts-build-
-                name: platform
               spec:
-                entrypoint: build-and-push # template build-and-push
+                entrypoint: build-and-push # the template below named build-and-push
+                ttlStrategy:
+                  secondsAfterCompletion: 10
+                  secondsAfterSuccess: 120
+                  secondsAfterFailure: 300
                 templates:
                 - name: build-and-push
                   steps: # a list of lists??
