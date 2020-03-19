@@ -135,7 +135,7 @@ spec:
         # Replace the following URL to change the Git repository used by Flux.
         # HTTP basic auth credentials can be supplied using environment variables:
         # https://$(GIT_AUTHUSER):$(GIT_AUTHKEY)@github.com/user/repository.git
-        - --git-url=https://github.com/squaremo/cuttlefacts-argo
+        - --git-url=https://github.com/cuttlefacts/cuttlefacts-argo
         - --git-branch=master
         - --git-path=bootstrap
         - --git-path=platform
