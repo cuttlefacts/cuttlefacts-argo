@@ -1,0 +1,41 @@
+---
+# This is a workflow template for building the app image from the app
+# repository.
+# NB the image is pushed to the registry for _this_ git
+# project, not the app's own project. That's to keep things neat and
+# tidy, and avoid colliding with other infrastructure (demos) doing
+# their own builds.
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: cuttlefacts-build
+  namespace: platform
+spec:
+  entrypoint: build-and-push
+  templates:
+  - name: build-and-push
+    inputs:
+      artifacts:
+      - name: source
+        path: /workspace/source
+        git:
+          repo: https://github.com/cuttlefacts/cuttlefacts-app
+          revision: master
+    volumes:
+    - name: image-push-secret
+      secret:
+        secretName: cuttlefacts-push-secret
+    container:
+      image: gcr.io/kaniko-project/executor:v0.13.0
+      volumeMounts:
+      - name: image-push-secret
+        mountPath: /secrets/.docker
+        readOnly: true
+      env:
+      - name: DOCKER_CONFIG
+        value: /secrets/.docker
+      command:
+      - /kaniko/executor
+      - --dockerfile=/workspace/source/src/Dockerfile
+      - --context=/workspace/source/src/
+      - --destination=docker.pkg.github.com/cuttlefacts/cuttlefacts-argo/cuttlefacts-app

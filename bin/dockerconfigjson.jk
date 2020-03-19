@@ -1,0 +1,17 @@
+// -*- javascript -*-
+
+// This transforms a docker-registry secret into secret that can be
+// mounted into a pod as a `.docker/config.json` file.
+
+// How to use:
+//
+//     kubectl get secret -o yaml foo-secret > foo.yaml
+//     jk transform ./bin/dockerconfigjson.jk --overwrite foo.yaml
+//     kubectl apply -f foo.yaml
+//     rm foo.yaml
+
+export default function(secret) {
+  const { data, ...rest } = secret;
+  data['config.json'] = data['.dockerconfigjson'];
+  return { data, ...rest };
+}
