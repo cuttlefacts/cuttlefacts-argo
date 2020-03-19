@@ -1,0 +1,97 @@
+---
+# Adapted from
+# https://github.com/argoproj/argo-events/blob/master/examples/event-sources/github.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: cuttlefacts-event-source
+  namespace: platform
+spec:
+  type: "webhook"
+  github:
+    cuttlefacts-app:
+      namespace: platform
+      # owner of the repo
+      owner: "cuttlefacts"
+      # repository name
+      repository: "cuttlefacts-app"
+      # Github will send events to following port and endpoint
+      webhook:
+        # endpoint to listen to events on
+        endpoint: "/push/"
+        # port to run internal HTTP server on
+        port: "12000"
+        # HTTP request method to allow. In this case, only POST requests are accepted
+        method: "POST"
+        # url the gateway will use to register at Github.
+        # This url must be reachable from outside the cluster.
+        # The gateway pod is backed by the service defined in the gateway spec. So get the URL for that service Github can reach to.
+        url: "https://cuttlefacts-argo-squaremo.ngrok.io"
+      # type of events to listen to.
+      # following listens to everything, hence *
+      # You can find more info on https://developer.github.com/v3/activity/events/types/
+      events:
+        - "push"
+      # apiToken refers to K8s secret that stores the github api token
+      apiToken:
+        # Name of the K8s secret that contains the access token
+        name: cuttlefacts-admin-secret
+        # Key within the K8s secret whose corresponding value (must be
+        # base64 encoded) is access token
+        key: token
+      # webhookSecret refers to K8s secret that stores the github hook secret
+      webhookSecret:
+        # Name of the K8s secret that contains the hook secret
+        name: cuttlefacts-webhook-secret
+        # Key within the K8s secret whose corresponding value (must be base64 encoded) is hook secret
+        key: key
+      # type of the connection between gateway and Github
+      insecure: false
+      # Determines if notifications are sent when the webhook is triggered
+      active: true
+      # The media type used to serialize the payloads
+      contentType: "json"
+---
+# Adapted from https://github.com/argoproj/argo-events/blob/master/examples/gateways/github.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Gateway
+metadata:
+  name: cuttlefacts-github-gateway
+  namespace: platform
+  labels:
+    # gateway controller with instanceId "argo-events" will process this gateway
+    gateways.argoproj.io/gateway-controller-instanceid: argo-events
+spec:
+  type: github
+  eventSourceRef:
+    name: cuttlefacts-event-source
+  template:
+    metadata:
+      name: cuttlefacts-github-gateway
+      namespace: platform
+      labels:
+        gateway-name: cuttlefacts-gateway
+    spec:
+      containers:
+        - name: gateway-client
+          image: argoproj/gateway-client:v0.13.0-rc
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/gateway-client"]
+        - name: github-events
+          image: argoproj/github-gateway:v0.13.0-rc
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/github-gateway"]
+      serviceAccountName: argo-events-sa
+  service:
+    metadata:
+      name: cuttlefacts-gateway-svc
+    spec:
+      selector:
+        gateway-name: cuttlefacts-gateway
+      ports:
+        - port: 12000
+          targetPort: 12000
+      type: ClusterIP
+  subscribers:
+    http:
+      - "http://cuttlefacts-sensor.platform.svc:9300/"

@@ -13,6 +13,5 @@
 export default function(secret) {
   const { data, ...rest } = secret;
   data['config.json'] = data['.dockerconfigjson'];
-  delete data['.dockerconfigjson'];
   return { data, ...rest };
 }
