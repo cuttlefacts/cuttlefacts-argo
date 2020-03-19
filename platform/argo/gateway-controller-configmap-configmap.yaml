@@ -2,7 +2,7 @@ apiVersion: v1
 data:
   config: |
     instanceID: argo-events
-    namespace: argo-events
+    namespace: platform
 kind: ConfigMap
 metadata:
   name: gateway-controller-configmap
