@@ -51,6 +51,7 @@ spec:
       active: true
       # The media type used to serialize the payloads
       contentType: "json"
+
 ---
 # Adapted from https://github.com/argoproj/argo-events/blob/master/examples/gateways/github.yaml
 apiVersion: argoproj.io/v1alpha1
@@ -94,4 +95,54 @@ spec:
       type: ClusterIP
   subscribers:
     http:
-      - "http://cuttlefacts-sensor.platform.svc:9300/"
+      - "http://cuttlefacts-github-sensor.platform.svc:9300/"
+
+---
+# Adapted from https://github.com/argoproj/argo-events/blob/master/examples/sensors/special-workflow-trigger.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: cuttlefacts-github-sensor
+  namespace: platform
+  labels:
+    sensors.argoproj.io/sensor-controller-instanceid: argo-events
+spec:
+  template:
+    spec:
+      containers:
+        - name: sensor
+          image: argoproj/sensor:v0.13.0-rc
+          imagePullPolicy: IfNotPresent
+      serviceAccountName: argo-events-sa
+  dependencies:
+    - name: push-event
+      gatewayName: cuttlefacts-github-gateway
+      eventName: cuttlefacts-app # I had to look at this: https://github.com/argoproj/argo-events/blob/master/sensors/dependencies/resolution.go to figure out what this was for. It's a glob pattern for the event subject, and for github events, that's the repo.
+  subscription:
+    http:
+      port: 9300
+  triggers:
+    - template:
+        name: cuttlefacts-build-trigger
+        argoWorkflow:
+          group: argoproj.io
+          version: v1alpha1
+          resource: workflows
+          operation: submit
+          source:
+            resource:
+              # Here in is the actual workflow resource
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: cuttlefacts-build-
+                name: platform
+              spec:
+                entrypoint: build-and-push # template build-and-push
+                templates:
+                - name: build-and-push
+                  steps: # a list of lists??
+                  - - name: call-cuttlefacts-build
+                      templateRef:
+                        name: cuttlefacts-build
+                        template: build-and-push

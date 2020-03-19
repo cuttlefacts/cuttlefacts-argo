@@ -1,18 +1,17 @@
 ---
-# This is a workflow that builds the app image from the app
-# repository.  NB the image is pushed to the registry for _this_ git
+# This is a workflow template for building the app image from the app
+# repository.
+# NB the image is pushed to the registry for _this_ git
 # project, not the app's own project. That's to keep things neat and
 # tidy, and avoid colliding with other infrastructure (demos) doing
 # their own builds.
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: WorkflowTemplate
 metadata:
-  generateName: cuttlefacts-build-
+  name: cuttlefacts-build
   namespace: platform
 spec:
   entrypoint: build-and-push
-  imagePullSecrets:
-  - name: cuttlefacts-push-secret
   templates:
   - name: build-and-push
     inputs:
