@@ -21,6 +21,9 @@ spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
 
+      imagePullSecrets:
+      - name: pull-secret
+
       containers:
       - name: server
         image: docker.pkg.github.com/cuttlefacts/cuttlefacts-argo/cuttlefacts-app

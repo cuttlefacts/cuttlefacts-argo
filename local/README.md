@@ -23,13 +23,13 @@ to push to an image repository][push-perms] -- I did the following:
    `read:packages` and `write:packages` permissions (and no `repo`
    permissions), then after copying it to the clipboard,
 
-```
+```bash
 # the name 'cuttlefacts-push-secret' matches the secret
 # mounted as a volume in platform/cuttlefacts-build.yaml
 kubectl create secret docker-registry --dry-run -o yaml \
   -n platform cuttlefacts-push-secret \
   --docker-server=https://docker.pkg.github.com \
-  --docker-username=squaremo \
+  --docker-username=squaremobot \
   --docker-password=$(pbpaste) > secret.yaml
 ```
 
@@ -40,6 +40,23 @@ container. Either edit it to copy the `.dockerconfigjson` to
 apply.
 
 [push-perms]: https://help.github.com/en/packages/publishing-and-managing-packages/about-github-packages#about-tokens
+
+## Setting up an image **pull** secret
+
+The app configuration will need an `imagePullSecret`, if you are using
+a registry that needs authentication (GitHub packages does).
+
+I just used the account token from above, but put it in the
+`cuttlefacts` namespace and named it `pull-secret`:
+
+```bash
+# the name 'pull-secret' matches the imagePullSecret entry
+# in the deployment
+kubectl create secret docker-registry \
+  -n cuttlefacts pull-secret \
+  --docker-server=https://docker.pkg.github.com \
+  --docker-username=squaremobot --docker-password=$(pbpaste)
+```
 
 ## Setting up a webhook admin secret
 
