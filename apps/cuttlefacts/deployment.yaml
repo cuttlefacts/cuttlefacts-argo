@@ -27,7 +27,7 @@ spec:
 
       containers:
       - name: server
-        image: docker.pkg.github.com/cuttlefacts/cuttlefacts-argo/cuttlefacts-app:v3
+        image: docker.pkg.github.com/cuttlefacts/cuttlefacts-argo/cuttlefacts-app:v4
         imagePullPolicy: IfNotPresent
         resources:
           requests:
