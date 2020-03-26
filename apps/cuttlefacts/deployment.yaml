@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +27,7 @@ spec:
 
       containers:
       - name: server
-        image: docker.pkg.github.com/cuttlefacts/cuttlefacts-argo/cuttlefacts-app
+        image: docker.pkg.github.com/cuttlefacts/cuttlefacts-argo.cuttlefacts-app:v2
         imagePullPolicy: IfNotPresent
         resources:
           requests:
