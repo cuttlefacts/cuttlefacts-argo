@@ -2,17 +2,17 @@
 # Workflow to update the manifest in the git repo, when a new
 # image is pushed.
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: WorkflowTemplate
 metadata:
-  generateName: cuttlefacts-update-
+  name: cuttlefacts-update
   namespace: platform
 spec:
   entrypoint: update-and-push
-  volumes:
-  - name: repo-key
-    secret:
-      secretName: cuttlefacts-repo-secret
-      defaultMode: 0400
+
+  # Volumes get defined in the _calling_ workflow
+
+  # Do the workflow arguments get supplied by the Workflow too? Yes.
+
   templates:
   - name: update-and-push
     steps:
@@ -21,9 +21,9 @@ spec:
         arguments:
           parameters:
           - name: file
-            value: /workspace/source/apps/cuttlefacts/deployment.yaml
+            value: "{{workflow.parameters.file}}"
           - name: image
-            value: docker.pkg.github.com/cuttlefacts/cuttlefacts-argo.cuttlefacts-app:v2
+            value: "{{workflow.parameters.image}}"
           artifacts:
           - name: source
             git:
@@ -38,9 +38,9 @@ spec:
         arguments:
           parameters:
           - name: file
-            value: /workspace/source/apps/cuttlefacts/deployment.yaml
+            value: "{{workflow.parameters.file}}"
           - name: message
-            value: Update to cuttlefacts v2
+            value: "{{workflow.parameters.message}}"
           - name: content
             value: "{{steps.call-update.outputs.result}}"
           artifacts:
@@ -68,9 +68,10 @@ spec:
         set -e
         set -o pipefail
 
+        cd "{{inputs.artifacts.source.path}}"
         echo "==> updating file " {{inputs.parameters.file}} >&2
         echo " with content:" >&2
-        cat {{inputs.parameters.file}} | \
+        cat "{{inputs.parameters.file}}" | \
           /usr/lib/kubeyaml/kubeyaml image \
             --namespace=cuttlefacts \
               --kind=Deployment \
@@ -99,7 +100,7 @@ spec:
         set -e
         set -o pipefail
 
-        cd /workspace/source
+        cd "{{inputs.artifacts.source.path}}"
         git config user.email "squaremobot@users.noreply.github.com"
         git config user.name  "squaremobot"
 
