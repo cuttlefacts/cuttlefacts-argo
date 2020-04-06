@@ -1,0 +1,117 @@
+---
+# Workflow to update the manifest in the git repo, when a new
+# image is pushed.
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: cuttlefacts-update
+  namespace: platform
+spec:
+  entrypoint: update-and-push
+
+  # Volumes get defined in the _calling_ workflow
+
+  # Do the workflow arguments get supplied by the Workflow too? Yes.
+
+  templates:
+  - name: update-and-push
+    steps:
+    - - name: call-update
+        template: update
+        arguments:
+          parameters:
+          - name: file
+            value: "{{workflow.parameters.file}}"
+          - name: image
+            value: "{{workflow.parameters.image}}"
+          artifacts:
+          - name: source
+            git:
+              repo: git@github.com:cuttlefacts/cuttlefacts-argo
+              revision: master
+              sshPrivateKeySecret:
+                name: cuttlefacts-repo-secret
+                key: id_rsa
+
+    - - name: call-commit-and-push
+        template: commit-and-push
+        arguments:
+          parameters:
+          - name: file
+            value: "{{workflow.parameters.file}}"
+          - name: message
+            value: "{{workflow.parameters.message}}"
+          - name: content
+            value: "{{steps.call-update.outputs.result}}"
+          artifacts:
+          - name: source
+            git:
+              repo: git@github.com:cuttlefacts/cuttlefacts-argo
+              revision: master
+              sshPrivateKeySecret:
+                name: cuttlefacts-repo-secret
+                key: id_rsa
+
+  - name: update
+    inputs:
+      parameters:
+      - name: image
+      - name: file
+      artifacts:
+      - name: source
+        path: /workspace/source
+    script:
+      image: quay.io/squaremo/kubeyaml:0.7.0
+      command:
+      - /bin/sh
+      source: |
+        set -e
+        set -o pipefail
+
+        cd "{{inputs.artifacts.source.path}}"
+        echo "==> updating file " {{inputs.parameters.file}} >&2
+        echo " with content:" >&2
+        cat "{{inputs.parameters.file}}" | \
+          /usr/lib/kubeyaml/kubeyaml image \
+            --namespace=cuttlefacts \
+              --kind=Deployment \
+              --name=cuttlefacts \
+              --container=server \
+              --image="{{inputs.parameters.image}}"
+        echo "... done." >&2
+
+  - name: commit-and-push
+    inputs:
+      parameters:
+      - name: file
+      - name: message
+      - name: content
+      artifacts:
+      - name: source
+        path: /workspace/source
+    script:
+      image: alpine/git:v2.24.1
+      volumeMounts:
+      - name: repo-key
+        mountPath: /root/.ssh/
+      command:
+      - /bin/sh
+      source: |
+        set -e
+        set -o pipefail
+
+        cd "{{inputs.artifacts.source.path}}"
+        git config user.email "squaremobot@users.noreply.github.com"
+        git config user.name  "squaremobot"
+
+        echo "==> Writing update to {{inputs.parameters.file}}" >&2
+        echo "{{inputs.parameters.content}}" > "{{inputs.parameters.file}}"
+        echo "==> Diff" >&2
+        git diff
+        echo >&2
+        echo "==> Committing" >&2
+        git add {{inputs.parameters.file}}
+        git commit -m "{{inputs.parameters.message}}"
+        git remote -v
+        GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -v" git push
+        echo Done. >&2
